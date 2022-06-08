@@ -3,20 +3,22 @@ package com.udacity.project4.locationreminders.reminderslist
 import android.app.Application
 import android.os.Bundle
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
+import androidx.fragment.app.testing.FragmentScenario
 import androidx.fragment.app.testing.launchFragmentInContainer
 import androidx.navigation.NavController
 import androidx.navigation.Navigation
 import androidx.test.core.app.ApplicationProvider
-import androidx.test.espresso.Espresso
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
+import androidx.test.espresso.matcher.RootMatchers.withDecorView
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.filters.MediumTest
+import androidx.test.rule.ActivityTestRule
 import com.udacity.project4.R
-import com.udacity.project4.base.NavigationCommand
+import com.udacity.project4.locationreminders.RemindersActivity
 import com.udacity.project4.locationreminders.data.ReminderDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.local.LocalDB
@@ -27,6 +29,7 @@ import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.locationreminders.savereminder.selectreminderlocation.SelectLocationFragment
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
+import org.hamcrest.CoreMatchers.`is`
 import org.hamcrest.CoreMatchers.not
 import org.junit.Before
 import org.junit.Rule
@@ -39,7 +42,6 @@ import org.koin.dsl.module
 import org.koin.test.AutoCloseKoinTest
 import org.koin.test.get
 import org.mockito.Mockito.*
-import java.lang.Thread.sleep
 
 
 @ExperimentalCoroutinesApi
@@ -202,7 +204,7 @@ class ReminderListFragmentTest : AutoCloseKoinTest() {
         verify(navController).navigate(
             SaveReminderFragmentDirections.actionSaveReminderFragmentToSelectLocationFragment()
         )
-        
+
     }
 
     @Test
@@ -260,9 +262,35 @@ class ReminderListFragmentTest : AutoCloseKoinTest() {
         onView(withId(R.id.saveReminder)).perform(click())
 
         // THEN - Check correct toast message is displayed and Verify fragment pops back to Reminder List Fragment
+//        scenario.onFragment {
+//            check(it._viewModel.showToast.value == appContext.getString(R.string.reminder_saved))
+//        }
+
+        var activity: FragmentScenario.EmptyFragmentActivity? = null
+
         scenario.onFragment {
-            check(it._viewModel.showToast.value == appContext.getString(R.string.reminder_saved))
+            activity = it.activity as FragmentScenario.EmptyFragmentActivity?
         }
+
+        check(activity != null)
+
+
+        onView(withText(R.string.reminder_saved)).inRoot(
+            withDecorView(
+                not(
+                    `is`(
+                        activity!!.window.decorView
+                    )
+                )
+            )
+        ).check(
+            matches(
+                isDisplayed()
+            )
+        )
+
+
+
         verify(navController).popBackStack()
 
     }

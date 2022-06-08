@@ -32,12 +32,10 @@ import com.google.android.material.snackbar.Snackbar
 import com.udacity.project4.BuildConfig
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
-import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
-import com.udacity.project4.locationreminders.savereminder.SaveReminderFragmentDirections
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
-import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 
 
 class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
@@ -50,7 +48,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
     //Use Koin to get the view model of the SaveReminder
-    override val _viewModel: SaveReminderViewModel by inject()
+    override val _viewModel: SaveReminderViewModel by sharedViewModel()
     private lateinit var binding: FragmentSelectLocationBinding
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
@@ -62,36 +60,29 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     @TargetApi(29)
     private fun foregroundAndBackgroundLocationPermissionApproved(): Boolean {
-        val foregroundLocationApproved = (
+        //        val backgroundPermissionApproved =
+//            if (runningQOrLater) {
+//                PackageManager.PERMISSION_GRANTED ==
+//                        ActivityCompat.checkSelfPermission(
+//                            requireContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION
+//                        )
+//            } else {
+//                true
+//            }
+        return (
                 PackageManager.PERMISSION_GRANTED ==
                         ActivityCompat.checkSelfPermission(
                             requireContext(),
                             Manifest.permission.ACCESS_FINE_LOCATION
                         ))
-        val backgroundPermissionApproved =
-            if (runningQOrLater) {
-                PackageManager.PERMISSION_GRANTED ==
-                        ActivityCompat.checkSelfPermission(
-                            requireContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                        )
-            } else {
-                true
-            }
-        return foregroundLocationApproved && backgroundPermissionApproved
     }
 
     @TargetApi(29)
     private fun requestForegroundAndBackgroundLocationPermissions() {
         if (foregroundAndBackgroundLocationPermissionApproved())
             return
-        var permissionsArray = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-        val resultCode = when {
-            runningQOrLater -> {
-                permissionsArray += Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_RESULT_CODE
-            }
-            else -> REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE
-        }
+        val permissionsArray = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+        val resultCode = REQUEST_FOREGROUND_ONLY_PERMISSIONS_REQUEST_CODE
         Log.d("SelectLocationFragment", "Request foreground only location permission")
         requestPermissions(
             permissionsArray,
@@ -110,7 +101,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             grantResults.isEmpty() ||
             grantResults[LOCATION_PERMISSION_INDEX] == PackageManager.PERMISSION_DENIED ||
             (requestCode == REQUEST_FOREGROUND_AND_BACKGROUND_PERMISSION_RESULT_CODE &&
-                    grantResults[BACKGROUND_LOCATION_PERMISSION_INDEX] ==
+                    grantResults[0] ==
                     PackageManager.PERMISSION_DENIED)
         ) {
             Snackbar.make(
@@ -133,10 +124,11 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     private lateinit var map: GoogleMap
 
     private var currentPoi: PointOfInterest? = null
+    private var currentPosition: LatLng? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         binding =
             DataBindingUtil.inflate(inflater, R.layout.fragment_select_location, container, false)
 
@@ -156,13 +148,25 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
 
-    @SuppressLint("MissingPermission")
     private fun onPermissionsApproved() {
         // Toast to warn user to select a location
         Toast.makeText(requireContext(), getString(R.string.select_poi), Toast.LENGTH_LONG).show()
 
         // Use LocationServices to get user current location and move to the specific location
         // Zoom to the user location after taking permissions
+
+        if (ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestForegroundAndBackgroundLocationPermissions()
+            return
+        }
+
         map.isMyLocationEnabled = true
         fusedLocationProviderClient =
             LocationServices.getFusedLocationProviderClient(requireActivity())
@@ -191,6 +195,16 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             )
             poiMarker.showInfoWindow()
             currentPoi = poi
+            currentPosition = null
+        }
+        map.setOnMapLongClickListener { latLng ->
+            map.clear()
+            map.addMarker(
+                MarkerOptions()
+                    .position(latLng)
+            )
+            currentPosition = latLng
+            currentPoi = null
         }
 
         // Click listener for save button
@@ -207,6 +221,11 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             _viewModel.latitude.value = currentPoi!!.latLng.latitude
             _viewModel.longitude.value = currentPoi!!.latLng.longitude
             _viewModel.reminderSelectedLocationStr.value = currentPoi!!.name
+            findNavController().popBackStack()
+        } else if (currentPosition != null) {
+            _viewModel.latitude.value = currentPosition!!.latitude
+            _viewModel.longitude.value = currentPosition!!.longitude
+            _viewModel.reminderSelectedLocationStr.value = currentPosition.toString()
             findNavController().popBackStack()
         }
     }

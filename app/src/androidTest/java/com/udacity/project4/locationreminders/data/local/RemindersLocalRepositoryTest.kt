@@ -35,8 +35,6 @@ import org.koin.test.get
 @MediumTest
 class RemindersLocalRepositoryTest : AutoCloseKoinTest() {
 
-//    TODO: Add testing implementation to the RemindersLocalRepository.kt
-
     // Executes each task synchronously using Architecture Components.
     @get:Rule
     var instantExecutorRule = InstantTaskExecutorRule()
@@ -56,7 +54,7 @@ class RemindersLocalRepositoryTest : AutoCloseKoinTest() {
                     RemindersDatabase::class.java
                 ).allowMainThreadQueries().build()
             }
-            single { RemindersLocalRepository(get())}
+            single { RemindersLocalRepository(get()) }
             single { (get() as RemindersDatabase).reminderDao() }
         }
         //declare a new koin module
@@ -132,6 +130,33 @@ class RemindersLocalRepositoryTest : AutoCloseKoinTest() {
         assertThat(result.data.title, `is`("Title1Updated"))
         assertThat(result.data.description, `is`("Description1Updated"))
         assertThat(result.data.location, `is`("Location1Updated"))
+    }
+
+    // Test get reminder by id error
+    @Test
+    fun getReminderByIdAndGetError() {
+
+        // Given a Reminder not in Repository
+        val newReminder = ReminderDTO(
+            "Title1",
+            "Description1",
+            "Location1",
+            null,
+            null
+        )
+
+
+        // WHEN - Get the Reminder by id from the repository.
+        var result : Any? = null
+
+        runBlocking {
+            result = repository.getReminder(newReminder.id)
+        }
+
+
+        // THEN - A error is returned
+        assertThat(result is Result.Error, `is`(true))
+        result as Result.Error
     }
 
     // Test database reminders

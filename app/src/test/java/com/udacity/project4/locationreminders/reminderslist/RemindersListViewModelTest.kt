@@ -4,13 +4,16 @@ import android.app.Application
 import android.os.Build
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.udacity.project4.locationreminders.MainCoroutineRule
 import com.udacity.project4.locationreminders.data.FakeDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
 import com.udacity.project4.locationreminders.data.dto.Result
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runBlockingTest
+import org.hamcrest.CoreMatchers.`is`
+import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -47,6 +50,11 @@ class RemindersListViewModelTest:
     private lateinit var remindersDataSource: FakeDataSource
     private lateinit var appContext: Application
 
+    // Set the main coroutines dispatcher for unit testing.
+    @ExperimentalCoroutinesApi
+    @get:Rule
+    var mainCoroutineRule = MainCoroutineRule()
+
     private val reminderListViewModel : RemindersListViewModel by inject()
 
     // Init variables with koin
@@ -77,15 +85,26 @@ class RemindersListViewModelTest:
     @Test
     fun getReminderList_getsReminderListEvent() = runBlockingTest {
 
+        // Pause dispatcher so we can verify initial values
+        mainCoroutineRule.pauseDispatcher()
 
         // When getting reminder list
         reminderListViewModel.loadReminders()
+
+        // Then progress indicator is shown
+        assertThat(reminderListViewModel.showLoading.value, `is`(true))
+
+        // Execute pending coroutines actions
+        mainCoroutineRule.resumeDispatcher()
 
         // Verify live data item list
         val liveDataToast = reminderListViewModel.remindersList
         assert(!liveDataToast.value.isNullOrEmpty())
 
         val item = remindersDataSource.getReminders() as Result.Success<*>
+
+        // // Then progress indicator is hidden
+        assertThat(reminderListViewModel.showLoading.value, `is`(false))
 
         // Check reminder list matches
         assert((item.data as List<*>).size == liveDataToast.value!!.size)
@@ -114,25 +133,16 @@ class RemindersListViewModelTest:
     @Test
     fun getReminderList_getsErrorResultEvent() = runBlockingTest {
 
-        // Set Reminder List value to null for testing
-        remindersDataSource.updateRemindersList(null)
-
         // When getting reminder list
         reminderListViewModel.loadReminders()
 
-        // Verify live data item list
-        val liveDataToast = reminderListViewModel.remindersList
-        assert(liveDataToast.value.isNullOrEmpty())
+        remindersDataSource.setReturnError(true)
 
         val item = remindersDataSource.getReminders()
 
         // Check reminder list result error
         assert(item is Result.Error)
 
-        val noData = reminderListViewModel.showNoData
-
-        //check no data has to be shown
-        assert(noData.value!!)
 
     }
 
