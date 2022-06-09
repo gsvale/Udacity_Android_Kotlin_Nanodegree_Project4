@@ -11,6 +11,7 @@ import com.udacity.project4.locationreminders.data.dto.Result
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runBlockingTest
 import org.hamcrest.CoreMatchers.`is`
+import org.hamcrest.CoreMatchers.not
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.Before
 import org.junit.Rule
@@ -28,7 +29,7 @@ import org.robolectric.annotation.Config
 @RunWith(AndroidJUnit4::class)
 @ExperimentalCoroutinesApi
 @Config(sdk = [Build.VERSION_CODES.P])
-class RemindersListViewModelTest:
+class RemindersListViewModelTest :
     AutoCloseKoinTest() {
 
     private val newReminder1 = ReminderDTO(
@@ -55,7 +56,7 @@ class RemindersListViewModelTest:
     @get:Rule
     var mainCoroutineRule = MainCoroutineRule()
 
-    private val reminderListViewModel : RemindersListViewModel by inject()
+    private val reminderListViewModel: RemindersListViewModel by inject()
 
     // Init variables with koin
 
@@ -70,7 +71,7 @@ class RemindersListViewModelTest:
                     get() as FakeDataSource
                 )
             }
-            single { FakeDataSource(mutableListOf(newReminder1, newReminder2))}
+            single { FakeDataSource(mutableListOf(newReminder1, newReminder2)) }
         }
         //declare a new koin module
         startKoin {
@@ -136,12 +137,15 @@ class RemindersListViewModelTest:
         // When getting reminder list
         reminderListViewModel.loadReminders()
 
+        assert(reminderListViewModel.showSnackBar.value.isNullOrEmpty())
+
         remindersDataSource.setReturnError(true)
 
         val item = remindersDataSource.getReminders()
 
         // Check reminder list result error
         assert(item is Result.Error)
+        assertThat(reminderListViewModel.showLoading.value, `is`(false))
 
 
     }

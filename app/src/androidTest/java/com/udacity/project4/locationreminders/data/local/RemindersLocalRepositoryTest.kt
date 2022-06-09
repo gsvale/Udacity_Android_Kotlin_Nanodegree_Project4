@@ -156,7 +156,8 @@ class RemindersLocalRepositoryTest : AutoCloseKoinTest() {
 
         // THEN - A error is returned
         assertThat(result is Result.Error, `is`(true))
-        result as Result.Error
+        assertThat((result as Result.Error).message, `is`("Reminder not found!"))
+
     }
 
     // Test database reminders

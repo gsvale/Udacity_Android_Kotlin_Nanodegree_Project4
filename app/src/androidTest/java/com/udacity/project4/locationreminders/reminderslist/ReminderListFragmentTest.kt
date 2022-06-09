@@ -234,7 +234,7 @@ class ReminderListFragmentTest : AutoCloseKoinTest() {
         scenario.onFragment {
             Navigation.setViewNavController(it.view!!, navController)
         }
-        onView(withId(R.id.map)).perform(click())
+        onView(withId(R.id.map)).perform(longClick())
 
         // WHEN - Click on the "save" button
         onView(withId(R.id.save_btn)).perform(click())
