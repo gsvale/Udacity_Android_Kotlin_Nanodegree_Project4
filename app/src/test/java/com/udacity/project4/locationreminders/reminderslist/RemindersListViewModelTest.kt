@@ -134,16 +134,16 @@ class RemindersListViewModelTest :
     @Test
     fun getReminderList_getsErrorResultEvent() = runBlockingTest {
 
-        // When getting reminder list
-        reminderListViewModel.loadReminders()
-
-        assert(reminderListViewModel.showSnackBar.value.isNullOrEmpty())
-
+        // When set Return Error to true
         remindersDataSource.setReturnError(true)
 
-        val item = remindersDataSource.getReminders()
+        // When Load Reminders
+        reminderListViewModel.loadReminders()
 
-        // Check reminder list result error
+        // Check reminder list result error and snackbar message
+        assert(!reminderListViewModel.showSnackBar.value.isNullOrEmpty())
+        assertThat(reminderListViewModel.showSnackBar.value, `is`("Test exception"))
+        val item = remindersDataSource.getReminders()
         assert(item is Result.Error)
         assertThat(reminderListViewModel.showLoading.value, `is`(false))
 
